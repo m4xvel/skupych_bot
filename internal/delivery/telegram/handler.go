@@ -713,6 +713,8 @@ func (h *Handler) startGuard(
 	ctx context.Context,
 	upd tgbotapi.Update,
 ) bool {
+	_ = ctx
+
 	chatID, ok := extractChatID(upd)
 	if !ok {
 		return true
@@ -750,27 +752,29 @@ func (h *Handler) startGuard(
 		return true
 	}
 
-	accepted, _ := h.userPolicyAcceptancesService.IsAccepted(ctx, chatID)
-	if !accepted {
-		message := tgbotapi.NewMessage(
-			chatID,
-			h.text.NeedAcceptRulesText,
-		)
-		message.ParseMode = "Markdown"
-		if _, err := h.bot.Send(message); err != nil {
-			wrapped := wrapTelegramErr("telegram.send_need_accept_rules", err)
-			logger.Log.Errorw("failed to send accept rules message",
-				"chat_id", chatID,
-				"err", wrapped,
+	/*
+		accepted, _ := h.userPolicyAcceptancesService.IsAccepted(ctx, chatID)
+		if !accepted {
+			message := tgbotapi.NewMessage(
+				chatID,
+				h.text.NeedAcceptRulesText,
 			)
+			message.ParseMode = "Markdown"
+			if _, err := h.bot.Send(message); err != nil {
+				wrapped := wrapTelegramErr("telegram.send_need_accept_rules", err)
+				logger.Log.Errorw("failed to send accept rules message",
+					"chat_id", chatID,
+					"err", wrapped,
+				)
+			}
+
+			logger.Log.Warnw("command is blocked, the user did not accept rules",
+				"user_chat_id", chatID,
+			)
+
+			return false
 		}
-
-		logger.Log.Warnw("command is blocked, the user did not accept rules",
-			"user_chat_id", chatID,
-		)
-
-		return false
-	}
+	*/
 
 	return true
 }

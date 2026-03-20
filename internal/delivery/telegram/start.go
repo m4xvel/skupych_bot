@@ -89,52 +89,74 @@ func (h *Handler) handleStartCommand(
 		)
 	}
 
-	accepted, _ := h.userPolicyAcceptancesService.IsAccepted(ctx, chatID)
-	if !accepted {
-		message := tgbotapi.NewMessage(chatID, h.textDynamic.HelloText())
-		message.ParseMode = "Markdown"
-		message.DisableWebPagePreview = true
-		token, err := h.callbackTokenService.Create(
-			ctx,
-			"accept_privacy",
-			&AcceptPrivacySelectPayload{
-				ChatID: chatID,
-			},
-		)
-		if err != nil {
-			logger.Log.Errorw("failed to create accept privacy callback token",
-				"chat_id", chatID,
-				"err", err,
-			)
-		}
+	firstName := ""
+	if msg.From != nil {
+		firstName = msg.From.FirstName
+	}
 
-		message.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
-			tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(
-				h.text.AgreeButtonText,
-				"accept_privacy:"+token,
-			)),
+	if err := h.userService.AddUser(
+		ctx,
+		chatID,
+		firstName,
+		func() string {
+			return h.feature.GetUserAvatar(h.bot, chatID)
+		},
+	); err != nil {
+		logger.Log.Errorw("failed to add user on start",
+			"chat_id", chatID,
+			"err", err,
 		)
+		return
+	}
 
-		if _, err := h.bot.Send(message); err != nil {
-			wrapped := wrapTelegramErr("telegram.send_hello", err)
-			logger.Log.Errorw("failed to send hello message",
-				"chat_id", chatID,
-				"err", wrapped,
-			)
-			if err := h.callbackTokenService.Delete(
+	/*
+		accepted, _ := h.userPolicyAcceptancesService.IsAccepted(ctx, chatID)
+		if !accepted {
+			message := tgbotapi.NewMessage(chatID, h.textDynamic.HelloText())
+			message.ParseMode = "Markdown"
+			message.DisableWebPagePreview = true
+			token, err := h.callbackTokenService.Create(
 				ctx,
-				token,
 				"accept_privacy",
-			); err != nil {
-				logger.Log.Errorw("failed to cleanup accept privacy callback token",
+				&AcceptPrivacySelectPayload{
+					ChatID: chatID,
+				},
+			)
+			if err != nil {
+				logger.Log.Errorw("failed to create accept privacy callback token",
 					"chat_id", chatID,
 					"err", err,
 				)
 			}
-		}
 
-		return
-	}
+			message.ReplyMarkup = tgbotapi.NewInlineKeyboardMarkup(
+				tgbotapi.NewInlineKeyboardRow(tgbotapi.NewInlineKeyboardButtonData(
+					h.text.AgreeButtonText,
+					"accept_privacy:"+token,
+				)),
+			)
+
+			if _, err := h.bot.Send(message); err != nil {
+				wrapped := wrapTelegramErr("telegram.send_hello", err)
+				logger.Log.Errorw("failed to send hello message",
+					"chat_id", chatID,
+					"err", wrapped,
+				)
+				if err := h.callbackTokenService.Delete(
+					ctx,
+					token,
+					"accept_privacy",
+				); err != nil {
+					logger.Log.Errorw("failed to cleanup accept privacy callback token",
+						"chat_id", chatID,
+						"err", err,
+					)
+				}
+			}
+
+			return
+		}
+	*/
 
 	if _, err := h.bot.Send(tgbotapi.NewMessage(chatID, h.textDynamic.HelloTextNotFirst())); err != nil {
 		wrapped := wrapTelegramErr("telegram.send_hello_not_first", err)
@@ -143,8 +165,5 @@ func (h *Handler) handleStartCommand(
 			"err", wrapped,
 		)
 	}
-
-	if accepted {
-		h.handlerCatalogCommand(ctx, msg)
-	}
+	h.handlerCatalogCommand(ctx, msg)
 }
